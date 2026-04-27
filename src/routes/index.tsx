@@ -16,14 +16,39 @@ function App() {
     }
   }, [])
 
+  const fontFaceCss = (file: File) => {
+    const fontName = file.name.replace(/\.[^/.]+$/, "").split('-')[0]; // remove extension
+    const fontUrl = URL.createObjectURL(file);
+
+    return `
+        @font-face {
+          font-family: '${fontName}';
+          src: url('${fontUrl}');
+        }
+      `
+  }
+
+  const handleFontMetrics = async (fontFiles: File[], fontNames: string[]) => {
+
+    const getFontFile = (fontName: string) => {
+      return fontFiles.find(f => f.name === fontName) as File
+    }
+
+    const fontsList: File[] = fontFiles.reduce((list: File[], file) => fontNames.includes(file.name) ? [...list, getFontFile(file.name)] : [...list], [])
+
+    const promiseBufferList = fontsList.map(async fontFile => new Uint8Array(await (fontFile as File).arrayBuffer()))
+    const fontsBufferList = await Promise.all(promiseBufferList)
+
+    const fontMetrics = await getFontMetrics({ data: { fontsBufferList: fontsBufferList } })
+
+    console.log(fontMetrics)
+
+  }
+
   const handleFontInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return
 
     const fontFiles = Array.from(e.target.files)
-
-    // const getBaseFontName = (fileName: string) => {
-    //   return fileName.includes('regular')
-    // }
 
     // const fontRegex = /\.(ttf|otf|woff|woff2|eot)$/i
     const fontRegex = /\.ttf$/i
@@ -32,31 +57,14 @@ function App() {
     const fontNames = regularFonts.map(file => file.name)
 
 
-    const fontFaceCss = (file: File) => {
-      const fontName = file.name.replace(/\.[^/.]+$/, "").split('-')[0]; // remove extension
-      const fontUrl = URL.createObjectURL(file);
+    await handleFontMetrics(fontFiles, fontNames)
 
-      return `
-        @font-face {
-          font-family: '${fontName}';
-          src: url('${fontUrl}');
-        }
-      `
-    }
-
+    // Append font-familys to html
     const style = document.createElement("style");
-
     style.innerHTML = `
       ${regularFonts.map(file => fontFaceCss(file)).join('\n')}
     `;
-
     document.head.appendChild(style);
-
-    const fontFile = fontFiles.find(file => file.name === fontNames[0])
-    const buffer = Array.from(new Uint8Array(await (fontFile as File).arrayBuffer()))
-    const fontMetrics = await getFontMetrics({ data: { fontBuffer: buffer } })
-
-    console.log(fontMetrics)
 
     setFonts(fontNames)
   }
