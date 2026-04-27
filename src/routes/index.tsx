@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 
+import { getFontMetrics } from '@server/fonts'
+
 export const Route = createFileRoute('/')({ component: App })
 
 function App() {
@@ -14,14 +16,14 @@ function App() {
     }
   }, [])
 
-  const handleFontInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFontInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return
 
     const fontFiles = Array.from(e.target.files)
 
-    const getBaseFontName = (fileName: string) => {
-      return fileName.includes('regular')
-    }
+    // const getBaseFontName = (fileName: string) => {
+    //   return fileName.includes('regular')
+    // }
 
     // const fontRegex = /\.(ttf|otf|woff|woff2|eot)$/i
     const fontRegex = /\.ttf$/i
@@ -49,6 +51,12 @@ function App() {
     `;
 
     document.head.appendChild(style);
+
+    const fontFile = fontFiles.find(file => file.name === fontNames[0])
+    const buffer = Array.from(new Uint8Array(await (fontFile as File).arrayBuffer()))
+    const fontMetrics = await getFontMetrics({ data: { fontBuffer: buffer } })
+
+    console.log(fontMetrics)
 
     setFonts(fontNames)
   }
