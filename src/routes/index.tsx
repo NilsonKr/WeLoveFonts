@@ -28,20 +28,19 @@ function App() {
       `
   }
 
-  const handleFontMetrics = async (fontFiles: File[], fontNames: string[]) => {
+  const handleFontMetrics = async (fontFiles: Record<string, File[]>) => {
 
-    const getFontFile = (fontName: string) => {
-      return fontFiles.find(f => f.name === fontName) as File
-    }
+    const groupList: Record<string, File[]> = Object.keys(fontFiles).reduce((acc, subFamily) => {
+      const subfamilyBufferPromises = fontFiles[subFamily].map(async fontFile => new Uint8Array(await (fontFile as File).arrayBuffer()))
 
-    const fontsList: File[] = fontFiles.reduce((list: File[], file) => fontNames.includes(file.name) ? [...list, getFontFile(file.name)] : [...list], [])
+      return ({ ...acc, [subFamily]: subfamilyBufferPromises })
+    }, {})
 
-    const promiseBufferList = fontsList.map(async fontFile => new Uint8Array(await (fontFile as File).arrayBuffer()))
-    const fontsBufferList = await Promise.all(promiseBufferList)
 
-    const fontMetrics = await getFontMetrics({ data: { fontsBufferList: fontsBufferList } })
+    // const promiseBufferList = fontsList.map(async fontFile => new Uint8Array(await (fontFile as File).arrayBuffer()))
+    // const fontsBufferList = await Promise.all(promiseBufferList)
 
-    console.log(fontMetrics)
+    // const fontMetrics = await getFontMetrics({ data: { fontsBufferList: fontsBufferList } })
 
   }
 
@@ -51,22 +50,35 @@ function App() {
     const fontFiles = Array.from(e.target.files)
 
     // const fontRegex = /\.(ttf|otf|woff|woff2|eot)$/i
-    const fontRegex = /\.ttf$/i
+    const fontRegex = /\.(ttf|otf)$/i
 
-    const regularFonts = fontFiles.filter((file) => fontRegex.test(file.name)).filter(file => file.name.includes('Regular'))
-    const fontNames = regularFonts.map(file => file.name)
+    const allowedFontFiles = fontFiles.filter((file) => fontRegex.test(file.name))
 
+    const fontFilesGrouped = allowedFontFiles.reduce((dict: Record<string, File[]>, file) => {
+      const baseName = file.name.replace(/\.[^/.]+$/, '')
+      const parts = baseName.split('-')
 
-    await handleFontMetrics(fontFiles, fontNames)
+      if (parts.length < 2) return dict
+
+      const subfamily = parts.slice(1).join('-')
+      dict[subfamily] = dict[subfamily] ? [...dict[subfamily], file] : [file]
+
+      return dict
+    }, {})
+
+    console.log('fontsBySubfamily', fontFilesGrouped)
+
+    // await handleFontMetrics(fontFilesGrouped)
 
     // Append font-familys to html
-    const style = document.createElement("style");
-    style.innerHTML = `
-      ${regularFonts.map(file => fontFaceCss(file)).join('\n')}
-    `;
-    document.head.appendChild(style);
 
-    setFonts(fontNames)
+    // const style = document.createElement("style");
+    // style.innerHTML = `
+    //   ${regularFonts.map(file => fontFaceCss(file)).join('\n')}
+    // `;
+    // document.head.appendChild(style);
+
+    // setFonts(fontNames)
   }
 
   return (
