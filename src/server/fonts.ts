@@ -19,25 +19,30 @@ type FontMetrics = {
 }
 
 export const getFontMetrics = createServerFn({ method: 'POST' })
-  .inputValidator((data: { fontsBufferList: Uint8Array<ArrayBuffer>[] }) => data)
+  .inputValidator((data: { fontsBufferList: Array<[string, Uint8Array<ArrayBuffer>[]]> }) => data)
   .handler(async ({ data }) => {
-    const extractedBufferList = data.fontsBufferList.map(b => Buffer.from(b))
-    const outputFontsMetrics: FontMetrics[] = extractedBufferList.map(b => {
-      const fontMetrics: Font = fontkit.create(b)
+    const metricsFromBufferList = data.fontsBufferList.reduce((acc,[subFamily, bufferList]) => {
+      const fontMetricsList: FontMetrics[] = bufferList.reduce((acc, buffer) =>{
+        const fontMetrics: Font = fontkit.create(buffer)
+         
+        return [...acc, {
+          fullName: fontMetrics.fullName,
+          familyName: fontMetrics.familyName,
+          subFamilyName: fontMetrics.subfamilyName,
+          unitsPerEm: fontMetrics.unitsPerEm,
+          ascent: fontMetrics.ascent,
+          descent: fontMetrics.descent,
+          capHeight: fontMetrics.capHeight,
+          xHeight: fontMetrics.xHeight,
+          lineGap: fontMetrics.lineGap,
+        }] 
+      },[] as FontMetrics[])
+      
+      return {...acc, [subFamily]: fontMetricsList}
+    }, {})
+    
+  
 
-      return {
-        fullName: fontMetrics.fullName,
-        familyName: fontMetrics.familyName,
-        subFamilyName: fontMetrics.subfamilyName,
-        unitsPerEm: fontMetrics.unitsPerEm,
-        ascent: fontMetrics.ascent,
-        descent: fontMetrics.descent,
-        capHeight: fontMetrics.capHeight,
-        xHeight: fontMetrics.xHeight,
-        lineGap: fontMetrics.lineGap,
-      }
-    })
-
-     return outputFontsMetrics
+     return metricsFromBufferList
   })
   

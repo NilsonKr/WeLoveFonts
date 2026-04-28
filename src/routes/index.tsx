@@ -29,19 +29,18 @@ function App() {
   }
 
   const handleFontMetrics = async (fontFiles: Record<string, File[]>) => {
-
-    const groupList: Record<string, File[]> = Object.keys(fontFiles).reduce((acc, subFamily) => {
+    const bufferPromisesEntries: Array<[string, Promise<Uint8Array<ArrayBuffer>>[]]> = Object.keys(fontFiles).reduce((acc, subFamily) => {
       const subfamilyBufferPromises = fontFiles[subFamily].map(async fontFile => new Uint8Array(await (fontFile as File).arrayBuffer()))
 
-      return ({ ...acc, [subFamily]: subfamilyBufferPromises })
-    }, {})
+      return [...acc, [subFamily, subfamilyBufferPromises]]
 
+    }, ([] as Array<[string, Promise<Uint8Array<ArrayBuffer>>[]]>))
 
-    // const promiseBufferList = fontsList.map(async fontFile => new Uint8Array(await (fontFile as File).arrayBuffer()))
-    // const fontsBufferList = await Promise.all(promiseBufferList)
+    const resolvedBufferPromises: Array<[string, Uint8Array<ArrayBuffer>[]]> = await Promise.all(bufferPromisesEntries.map(async ([subFamily, promises]) => [subFamily, await Promise.all(promises)]))
 
-    // const fontMetrics = await getFontMetrics({ data: { fontsBufferList: fontsBufferList } })
+    const fontMetrics = await getFontMetrics({ data: { fontsBufferList: resolvedBufferPromises } })
 
+    console.log(fontMetrics)
   }
 
   const handleFontInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -66,9 +65,7 @@ function App() {
       return dict
     }, {})
 
-    console.log('fontsBySubfamily', fontFilesGrouped)
-
-    // await handleFontMetrics(fontFilesGrouped)
+    await handleFontMetrics(fontFilesGrouped)
 
     // Append font-familys to html
 
