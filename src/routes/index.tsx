@@ -28,6 +28,22 @@ function App() {
       `
   }
 
+  const handleDownload = (base64: string, filename: string) => {
+    const binary = atob(base64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i)
+    }
+    const blob = new Blob([bytes], { type: 'font/otf' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'Normalized ' + filename
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+
   const handleFontMetrics = async (fontFiles: Record<string, File[]>) => {
     const bufferPromisesEntries: Array<[string, Promise<Uint8Array<ArrayBuffer>>[]]> = Object.keys(fontFiles).reduce((acc, subFamily) => {
       const subfamilyBufferPromises = fontFiles[subFamily].map(async fontFile => new Uint8Array(await (fontFile as File).arrayBuffer()))
@@ -40,7 +56,7 @@ function App() {
 
     const fontMetrics = await getFontMetrics({ data: { fontsBufferList: resolvedBufferPromises } })
 
-    console.log(fontMetrics)
+    fontMetrics.forEach(([fontName, fontbase64]) => handleDownload(fontbase64, fontName))
   }
 
   const handleFontInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
